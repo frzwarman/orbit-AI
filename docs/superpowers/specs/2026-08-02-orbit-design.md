@@ -1,7 +1,7 @@
 # Orbit Product and Technical Design
 
 **Date:** 2026-08-02  
-**Status:** Awaiting written-spec review
+**Status:** Approved
 
 ## Product Summary
 
