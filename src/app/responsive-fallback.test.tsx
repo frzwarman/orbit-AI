@@ -23,6 +23,14 @@ describe("adaptive rendering hooks", () => {
     expect(probe).toHaveBeenCalledTimes(1);
   });
 
+  it("does not allocate a throwaway WebGL context during capability detection", () => {
+    Object.defineProperty(window, "WebGLRenderingContext", { configurable: true, value: class {} });
+    const createElement = vi.spyOn(document, "createElement");
+
+    expect(capabilities.supportsWebGL()).toBe(true);
+    expect(createElement).not.toHaveBeenCalled();
+  });
+
   it("tracks document visibility so animation work can pause", async () => {
     const { result } = renderHook(() => useDocumentVisibility());
     expect(result.current).toBe(true);

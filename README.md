@@ -54,15 +54,11 @@ Chat, history, settings, keyboard shortcuts, and all core actions work without W
 
 Dexie stores conversations, messages, and settings in the browser's `orbit` IndexedDB database. Data does not sync between browsers or devices. Clearing site data removes it. Storage failures are surfaced as non-blocking warnings so chat remains usable for the current session.
 
-## Optional GLB assistants
+## RobotExpressive avatar
 
-Orbit uses procedural assistants by default, so no model download is required. To use custom models:
+Orbit ships the Three.js `RobotExpressive.glb` avatar locally and uses it by default. Chat lifecycle events drive its pose and emotes, while the Avatar lab provides manual states, emotes, and facial expressions. Compact previews start with the controls minimized so the character stays visible. If the model cannot load or render, the local scene boundary restores the procedural assistant instead of breaking chat.
 
-1. Add `public/models/alex.glb` and `public/models/ava.glb`.
-2. Build or run with `VITE_USE_ASSISTANT_MODELS=true`.
-3. Follow the animation and coordinate requirements in [`public/models/README.md`](public/models/README.md).
-
-If a model cannot load or render, its local scene boundary restores the procedural assistant instead of breaking chat.
+The model is CC0 and is attributed in [`public/models/README.md`](public/models/README.md), which also documents its clip and morph-target contract.
 
 ## Frontend security and privacy
 
@@ -90,4 +86,4 @@ Deploy the generated `dist/` directory as a static site. The host must allow the
 - `src/lib/storage` — Dexie database and repositories
 - `src/stores` — focused Zustand state stores
 - `e2e` — desktop and Pixel 7 Playwright journeys
-- `public/models` — optional Alex/Ava GLB assets and authoring guide
+- `public/models` — vendored RobotExpressive GLB, attribution, and animation contract

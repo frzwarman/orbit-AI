@@ -1,43 +1,37 @@
-# Assistant model guide
+# RobotExpressive model guide
 
-Orbit renders procedural Alex and Ava assistants by default. Optional authored models are loaded only when `VITE_USE_ASSISTANT_MODELS=true` and must use these exact public paths:
+Orbit renders `/public/models/RobotExpressive.glb` (browser URL `/models/RobotExpressive.glb`) by default. It is the model used by the official Three.js [skinning, morphing, and animation example](https://threejs.org/examples/#webgl_animation_skinning_morph).
 
-- `/public/models/alex.glb` → browser URL `/models/alex.glb`
-- `/public/models/ava.glb` → browser URL `/models/ava.glb`
+The model is licensed CC0. Original character by Tomás Laulhé, with modifications by Don McCurdy. Source: [`three.js/examples/models/gltf/RobotExpressive`](https://github.com/mrdoob/three.js/tree/master/examples/models/gltf/RobotExpressive).
 
-## Required animation clips
+## Animation contract
 
-Both files must expose the same case-sensitive clip names:
+Orbit expects the case-sensitive clips supplied by the model:
 
-| Clip | Looping | Purpose |
-| --- | --- | --- |
-| `Idle` | Repeats | Resting pose and subtle breathing |
-| `Thinking` | Repeats | Work or analysis gesture |
-| `Streaming` | Repeats | Active response gesture |
-| `Done` | Once | Short completion acknowledgment |
+- Base states: `Walking`, `Running`, `Dance`, `Death`, `Sitting`, and `Standing`
+- Emotes: `Jump`, `Yes`, `No`, `Wave`, `Punch`, and `ThumbsUp`
+- Fallback: `Idle`
 
-State changes crossfade over 0.35 seconds. Re-entering the current state does not restart its clip. `Done` uses `LoopOnce`, plays once, and clamps at its final frame; after the mixer reports completion, the visual animation returns to `Idle`. This visual fallback does not alter the chat lifecycle, whose done-to-idle state transition is controlled separately.
+Lifecycle mode maps idle to `Standing`, thinking to `Sitting`, streaming to `Wave` followed by `Standing`, and done to `ThumbsUp` followed by `Standing`. Reduced motion suppresses automatic lifecycle emotes. Manual state and emote controls remain available in the Avatar lab.
 
-Missing clips do not crash the scene, but the assistant cannot accurately represent that state. Keep clip durations short and avoid root-motion translation.
+Idle, walking, running, and dance repeat. Emotes and terminal poses use `LoopOnce`, clamp at their final frame, and return to the selected base animation after the mixer reports completion. Transitions crossfade rather than restarting the current action.
 
-## Scale and coordinates
+## Expression contract
 
-- Author in meters with Y up and the character facing +Z.
-- Place the character's feet at the world origin (`0, 0, 0`).
-- Apply transforms before export and keep the armature root stable.
-- Target a human height near 1.7–1.9 model units. Orbit currently renders the model at scale `1.15` and positions it at `[-0.75, 0, 0]` in the office.
-- Keep geometry centered around the origin and avoid cameras, lights, or unrelated hidden meshes in the GLB.
+Orbit traverses every morph-capable mesh and looks up these morph targets without depending on a particular node name:
 
-Test both files in all four states at compact and full scene sizes. If loading or rendering fails, Orbit's local scene boundary uses the procedural character so chat remains functional.
+- `Angry`
+- `Surprised`
+- `Sad`
 
-## Optimization
+Selecting `Neutral` sets all three influences to zero. Other expression choices are exclusive.
 
-Keep each model and its textures small enough for mobile networks. Remove unused nodes, materials, morph targets, and animation tracks before export. One optimization example is:
+## Runtime fallbacks
+
+The model is cloned with Three.js `SkeletonUtils` before animation binding. Missing assets, failed scene rendering, unavailable WebGL, and WebGL context loss are contained by local fallbacks so chat remains functional. The procedural character is retained as the model-loading/error fallback.
+
+Keep replacement assets modest for mobile networks, preserve the clip and morph-target names above, use Y-up coordinates, and avoid root-motion translation. Optimize custom replacements before deployment, for example:
 
 ```bash
 npx gltf-transform optimize input.glb output.glb --compress draco
 ```
-
-Draco reduces geometry transfer size but adds decode work, so measure startup on lower-end mobile hardware. Prefer a modest mesh and texture budget over relying only on compression.
-
-For textures, resize source images to the smallest practical power-of-two dimensions, use sRGB only for color/emissive maps, and prepare KTX2/Basis Universal variants with tools such as `gltf-transform textureCompress`. Confirm that the final GLB embeds or correctly references the compressed textures and that the deployment serves `.glb` and `.ktx2` with appropriate MIME types and long-lived cache headers.

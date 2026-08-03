@@ -9,6 +9,7 @@ export type PersistedSettings = {
   threeDEnabled: boolean;
   reducedMotion: boolean;
   quality: QualityMode;
+  conversationPanelCollapsed: boolean;
 };
 
 export type SettingRecord = {

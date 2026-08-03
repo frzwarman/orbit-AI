@@ -22,7 +22,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "latest",
-    "three": "latest",
+    "three": "0.182.0",
     "zustand": "latest"
   },
   "devDependencies": {
@@ -32,9 +32,10 @@
     "@testing-library/jest-dom": "latest",
     "@testing-library/react": "latest",
     "@testing-library/user-event": "latest",
+    "@types/node": "^26.1.2",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "@types/three": "latest",
+    "@types/three": "0.182.0",
     "@vitejs/plugin-react": "latest",
     "eslint": "latest",
     "eslint-plugin-react-hooks": "latest",

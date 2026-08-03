@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useAssistantStore } from "../stores/assistant-store";
@@ -31,5 +32,20 @@ describe("App", () => {
 
     expect(screen.getByRole("main", { name: /orbit workspace/i })).toBeVisible();
     expect(screen.getByRole("button", { name: /toggle assistant preview/i })).toBeVisible();
+  });
+
+  it("minimizes and restores the desktop conversation panel", async () => {
+    const user = userEvent.setup();
+    useAssistantStore.setState({
+      config: { character: "alex", name: "Alex", personality: "professional", voiceEnabled: false },
+      hydrated: true,
+    });
+    usePreferencesStore.setState({ hydrated: true, conversationPanelCollapsed: false });
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Minimize conversations" }));
+    expect(screen.getByRole("main", { name: /orbit workspace/i })).toHaveClass("workspace-shell--conversations-collapsed");
+    await user.click(screen.getByRole("button", { name: "Expand conversations" }));
+    expect(screen.getByRole("main", { name: /orbit workspace/i })).not.toHaveClass("workspace-shell--conversations-collapsed");
   });
 });

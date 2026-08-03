@@ -30,6 +30,15 @@ test("mobile history and composer remain usable as the viewport changes", async 
   await expect(composer).toBeInViewport();
 });
 
+test("mobile defers the WebGL canvas until the preview is requested", async ({ page }) => {
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator("canvas")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Toggle assistant preview" }).click();
+
+  await expect(page.locator("canvas")).toHaveCount(1);
+});
+
 test("a stopped response keeps its partial output", async ({ page }) => {
   await sendMessage(page, "Stream a response");
   await expect(page.getByText("Here is", { exact: true })).toBeVisible();

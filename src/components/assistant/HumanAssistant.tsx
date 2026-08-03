@@ -4,7 +4,7 @@ import type { AssistantCharacter, AssistantState } from "../../types/assistant";
 import { AnimatedModel } from "./AnimatedModel";
 import { ProceduralHuman } from "./ProceduralHuman";
 
-type Props = { character: AssistantCharacter; state: AssistantState };
+type Props = { character: AssistantCharacter; state: AssistantState; reducedMotion: boolean };
 
 class ModelBoundary extends Component<Props & { children: ReactNode }, { failed: boolean }> {
   override state = { failed: false };
@@ -17,8 +17,6 @@ class ModelBoundary extends Component<Props & { children: ReactNode }, { failed:
 }
 
 export function HumanAssistant(props: Props) {
-  if (import.meta.env.VITE_USE_ASSISTANT_MODELS !== "true") return <ProceduralHuman {...props} />;
-
   return (
     <ModelBoundary {...props}>
       <Suspense fallback={<ProceduralHuman {...props} />}>

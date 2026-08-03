@@ -12,7 +12,7 @@ export function OfficeScene({ character, state, reducedMotion, compact = false, 
       <ambientLight intensity={0.85} />
       <directionalLight position={[4, 7, 5]} intensity={2.2} color="#dbeafe" castShadow={highQuality} />
       <pointLight position={[-3, 3, 2]} intensity={18} color={accent} distance={7} />
-      <HumanAssistant character={character} state={state} />
+      <HumanAssistant character={character} state={state} reducedMotion={reducedMotion} />
       {!compact && (
         <>
           <RoundedBox args={[3.5, 0.16, 1.25]} radius={0.08} position={[0.7, 0.78, -0.25]} castShadow receiveShadow><meshStandardMaterial color="#121a2d" roughness={0.42} metalness={0.45} /></RoundedBox>

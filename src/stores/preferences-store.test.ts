@@ -20,6 +20,7 @@ describe("preferences store", () => {
       threeDEnabled: true,
       reducedMotion: false,
       quality: "auto",
+      conversationPanelCollapsed: false,
       hydrated: false,
       persistenceWarning: null,
     });
@@ -32,16 +33,24 @@ describe("preferences store", () => {
     expect(usePreferencesStore.getState()).toMatchObject({ reducedMotion: true, threeDEnabled: false });
   });
 
+  it("persists desktop conversation panel minimization", () => {
+    usePreferencesStore.getState().setConversationPanelCollapsed(true);
+
+    expect(usePreferencesStore.getState().conversationPanelCollapsed).toBe(true);
+    expect(settings.set).toHaveBeenCalledWith("conversationPanelCollapsed", true);
+  });
+
   it("preserves persisted choices while hydrating", async () => {
     settings.get.mockImplementation(async (key: string) => {
       if (key === "quality") return "high";
       if (key === "threeDEnabled") return false;
+      if (key === "conversationPanelCollapsed") return true;
       return undefined;
     });
 
     await usePreferencesStore.getState().hydrate();
 
-    expect(usePreferencesStore.getState()).toMatchObject({ quality: "high", threeDEnabled: false, hydrated: true });
+    expect(usePreferencesStore.getState()).toMatchObject({ quality: "high", threeDEnabled: false, conversationPanelCollapsed: true, hydrated: true });
   });
 
   it("selects low quality for constrained devices", () => {

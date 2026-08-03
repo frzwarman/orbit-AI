@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ChatWorkspace } from "../../components/chat/ChatWorkspace";
+import { AvatarControls } from "../../components/assistant/AvatarControls";
 import { OrbitLogo } from "../../components/common/OrbitLogo";
 import { CommandMenu } from "../../components/settings/CommandMenu";
 import { SettingsDialog } from "../../components/settings/SettingsDialog";
@@ -38,8 +39,11 @@ function WorkspaceShell() {
   const assistant = useAssistantStore((store) => store.config);
   const threeDEnabled = usePreferencesStore((store) => store.threeDEnabled);
   const reducedMotion = usePreferencesStore((store) => store.reducedMotion);
+  const conversationsCollapsed = usePreferencesStore((store) => store.conversationPanelCollapsed);
+  const setConversationsCollapsed = usePreferencesStore((store) => store.setConversationPanelCollapsed);
   const sceneMode = useResponsiveScene();
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [mobilePreviewMounted, setMobilePreviewMounted] = useState(false);
   const hydrateConversations = useConversationStore((store) => store.hydrate);
   const conversationsHydrated = useConversationStore((store) => store.hydrated);
   const [overlay, setOverlay] = useState<"conversations" | "settings" | "commands" | null>(null);
@@ -71,7 +75,7 @@ function WorkspaceShell() {
 
   return (
     <main
-      className={`workspace-shell${reducedMotion ? " workspace-shell--reduced-motion" : ""}`}
+      className={`workspace-shell${reducedMotion ? " workspace-shell--reduced-motion" : ""}${conversationsCollapsed ? " workspace-shell--conversations-collapsed" : ""}`}
       data-motion={reducedMotion ? "reduced" : "full"}
       aria-label="Orbit workspace"
     >
@@ -81,7 +85,12 @@ function WorkspaceShell() {
         <OrbitLogo />
         <div className="workspace-header__actions">
           <button type="button" className="icon-button" aria-label="Toggle assistant preview" aria-pressed={mobilePreviewOpen}
-            onClick={() => setMobilePreviewOpen((open) => !open)}>◉</button>
+            onClick={() => {
+              setMobilePreviewOpen((open) => {
+                if (!open) setMobilePreviewMounted(true);
+                return !open;
+              });
+            }}>◉</button>
           <button type="button" className="icon-button" aria-label="Open settings" onClick={() => setOverlay("settings")}>⚙</button>
         </div>
       </header>
@@ -93,13 +102,25 @@ function WorkspaceShell() {
           <button type="button" className="icon-button" aria-label="Open settings" onClick={() => setOverlay("settings")}>⚙</button>
         </div>
       </aside>
-      <aside className="workspace-conversations"><ConversationSidebar onNewConversation={newConversation} onSelectConversation={selectConversation} /></aside>
+      <aside className="workspace-conversations" aria-label={conversationsCollapsed ? "Conversations minimized" : "Conversation history"}>
+        {conversationsCollapsed ? (
+          <button className="conversation-panel-toggle conversation-panel-toggle--expand" type="button" aria-label="Expand conversations" onClick={() => setConversationsCollapsed(false)}>
+            <span aria-hidden="true">›</span><span>History</span>
+          </button>
+        ) : (
+          <>
+            <button className="conversation-panel-toggle conversation-panel-toggle--minimize" type="button" aria-label="Minimize conversations" onClick={() => setConversationsCollapsed(true)}>‹</button>
+            <ConversationSidebar onNewConversation={newConversation} onSelectConversation={selectConversation} />
+          </>
+        )}
+      </aside>
       <section className={`workspace-stage${mobilePreviewOpen ? " workspace-stage--mobile-open" : ""}`} aria-label="Assistant preview">
-        {threeDEnabled ? (
+        {threeDEnabled && (sceneMode !== "compact" || mobilePreviewMounted) ? (
           <Suspense fallback={<div className="scene-fallback" role="status">Loading assistant preview…</div>}>
-            <WorkspaceCanvas compact={sceneMode !== "full"} />
+            <WorkspaceCanvas compact={sceneMode !== "full"} active={sceneMode !== "compact" || mobilePreviewOpen} />
           </Suspense>
         ) : <div className="scene-fallback"><p className="eyebrow">Assistant space</p><p>{assistant?.name ?? "Orbit"} is online</p></div>}
+        {threeDEnabled && (sceneMode !== "compact" || mobilePreviewOpen) && <AvatarControls initiallyCollapsed={sceneMode === "compact"} />}
       </section>
       <section className="workspace-chat" id="chat-panel" tabIndex={-1} aria-label="Chat panel">
         <ChatWorkspace />

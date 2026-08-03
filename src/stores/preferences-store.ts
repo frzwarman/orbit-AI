@@ -9,12 +9,14 @@ type PreferencesStore = {
   threeDEnabled: boolean;
   reducedMotion: boolean;
   quality: QualityMode;
+  conversationPanelCollapsed: boolean;
   hydrated: boolean;
   persistenceWarning: string | null;
   setMode: (mode: AssistantMode) => void;
   setThreeDEnabled: (enabled: boolean) => void;
   setReducedMotion: (enabled: boolean) => void;
   setQuality: (quality: QualityMode) => void;
+  setConversationPanelCollapsed: (collapsed: boolean) => void;
   hydrate: () => Promise<void>;
 };
 
@@ -30,6 +32,7 @@ export const usePreferencesStore = create<PreferencesStore>((set) => {
     threeDEnabled: true,
     reducedMotion: false,
     quality: "auto",
+    conversationPanelCollapsed: false,
     hydrated: false,
     persistenceWarning: null,
     setMode: (mode) => {
@@ -48,20 +51,26 @@ export const usePreferencesStore = create<PreferencesStore>((set) => {
       set({ quality, persistenceWarning: null });
       persist("quality", quality);
     },
+    setConversationPanelCollapsed: (conversationPanelCollapsed) => {
+      set({ conversationPanelCollapsed, persistenceWarning: null });
+      persist("conversationPanelCollapsed", conversationPanelCollapsed);
+    },
     hydrate: async () => {
       const defaults = detectPreferenceDefaults();
       try {
-        const [mode, threeDEnabled, reducedMotion, quality] = await Promise.all([
+        const [mode, threeDEnabled, reducedMotion, quality, conversationPanelCollapsed] = await Promise.all([
           settingsRepository.get("mode"),
           settingsRepository.get("threeDEnabled"),
           settingsRepository.get("reducedMotion"),
           settingsRepository.get("quality"),
+          settingsRepository.get("conversationPanelCollapsed"),
         ]);
         set({
           mode: mode ?? "general",
           threeDEnabled: threeDEnabled ?? true,
           reducedMotion: reducedMotion ?? defaults.reducedMotion,
           quality: quality ?? defaults.quality,
+          conversationPanelCollapsed: conversationPanelCollapsed ?? false,
           hydrated: true,
           persistenceWarning: null,
         });
