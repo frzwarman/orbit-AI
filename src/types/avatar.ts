@@ -7,7 +7,16 @@ export type AvatarEmote = (typeof AVATAR_EMOTES)[number];
 export type AvatarExpression = (typeof AVATAR_EXPRESSIONS)[number];
 export type RobotActionName = "Idle" | AvatarBaseState | AvatarEmote;
 
-export type AvatarEmoteRequest = {
-  name: AvatarEmote;
+export type AvatarCueSource = "response" | "user" | "error";
+
+export type AvatarCueInput = {
+  source: AvatarCueSource;
+  action: RobotActionName;
+  expression: AvatarExpression;
+  persistent?: boolean;
+  holdMs?: number;
+};
+
+export type AvatarCue = AvatarCueInput & {
   sequence: number;
 };

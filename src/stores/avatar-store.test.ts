@@ -2,33 +2,56 @@ import { describe, expect, it } from "vitest";
 
 import { createAvatarStore } from "./avatar-store";
 
-describe("avatar controls store", () => {
-  it("supports automatic and manual base states", () => {
+describe("automatic avatar cue store", () => {
+  it("activates cues and assigns a new sequence to repeated actions", () => {
     const store = createAvatarStore();
 
-    store.getState().setManualState("Running");
-    expect(store.getState().manualState).toBe("Running");
+    store.getState().emitCue({ source: "user", action: "Wave", expression: "Neutral" });
+    const first = store.getState().activeCue;
+    store.getState().completeCue(first?.sequence ?? -1);
+    store.getState().emitCue({ source: "user", action: "Wave", expression: "Neutral" });
 
-    store.getState().setManualState(null);
-    expect(store.getState().manualState).toBeNull();
+    expect(first?.sequence).toBe(1);
+    expect(store.getState().activeCue?.sequence).toBe(2);
   });
 
-  it("creates a new request when the same emote is triggered repeatedly", () => {
+  it("queues lower-priority response cues behind user cues", () => {
     const store = createAvatarStore();
+    store.getState().emitCue({ source: "user", action: "Wave", expression: "Neutral" });
+    store.getState().emitCue({ source: "response", action: "ThumbsUp", expression: "Neutral" });
 
-    store.getState().triggerEmote("Wave");
-    const first = store.getState().emoteRequest;
-    store.getState().triggerEmote("Wave");
+    expect(store.getState().activeCue?.action).toBe("Wave");
+    expect(store.getState().pendingCue?.action).toBe("ThumbsUp");
 
-    expect(first).toEqual({ name: "Wave", sequence: 1 });
-    expect(store.getState().emoteRequest).toEqual({ name: "Wave", sequence: 2 });
+    store.getState().completeCue(store.getState().activeCue?.sequence ?? -1);
+    expect(store.getState().activeCue?.action).toBe("ThumbsUp");
+    expect(store.getState().pendingCue).toBeNull();
   });
 
-  it("selects one facial expression at a time", () => {
+  it("does not repeat the same reaction when user and response share an intent", () => {
     const store = createAvatarStore();
-    store.getState().setExpression("Angry");
-    expect(store.getState().expression).toBe("Angry");
-    store.getState().setExpression("Neutral");
-    expect(store.getState().expression).toBe("Neutral");
+    store.getState().emitCue({ source: "user", action: "Wave", expression: "Neutral" });
+    store.getState().emitCue({ source: "response", action: "Wave", expression: "Neutral" });
+
+    expect(store.getState().activeCue?.action).toBe("Wave");
+    expect(store.getState().pendingCue).toBeNull();
+    expect(store.getState().nextSequence).toBe(1);
+  });
+
+  it("lets a persistent error replace all other cues until reset", () => {
+    const store = createAvatarStore();
+    store.getState().emitCue({ source: "user", action: "Wave", expression: "Neutral" });
+    store.getState().emitCue({ source: "response", action: "Yes", expression: "Neutral" });
+    store.getState().emitCue({ source: "error", action: "Death", expression: "Sad", persistent: true });
+
+    const error = store.getState().activeCue;
+    expect(error).toMatchObject({ source: "error", action: "Death", expression: "Sad", persistent: true });
+    expect(store.getState().pendingCue).toBeNull();
+    store.getState().completeCue(error?.sequence ?? -1);
+    expect(store.getState().activeCue).toEqual(error);
+
+    store.getState().resetCues();
+    expect(store.getState().activeCue).toBeNull();
+    expect(store.getState().pendingCue).toBeNull();
   });
 });

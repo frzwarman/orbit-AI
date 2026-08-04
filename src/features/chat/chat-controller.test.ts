@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AIProvider, ChatMessage, StreamChatOptions } from "../../lib/ai/types";
 import type { ConversationRepository } from "../../lib/storage/conversation-repository";
 import { useAssistantStore } from "../../stores/assistant-store";
+import { createAvatarStore } from "../../stores/avatar-store";
 import { createChatStore } from "../../stores/chat-store";
 import { createConversationStore } from "../../stores/conversation-store";
 import type { StoredMessage } from "../../types/chat";
@@ -99,13 +100,32 @@ describe("chat controller", () => {
     expect(useAssistantStore.getState().state).toBe("idle");
   });
 
+  it("drives user and streamed response avatar cues automatically", async () => {
+    const provider = new ControlledProvider();
+    const { conversation, repository } = makeRepository();
+    const conversationStore = createConversationStore(repository);
+    conversationStore.setState({ conversations: [conversation], activeConversationId: conversation.id });
+    const chatStore = createChatStore();
+    const avatarStore = createAvatarStore();
+    const controller = createChatController({ provider, repository, conversationStore, chatStore, avatarStore });
+
+    const execution = controller.submit("Hello Orbit");
+    expect(avatarStore.getState().activeCue).toMatchObject({ source: "user", action: "Wave" });
+    await provider.started;
+    provider.emit("Wow, that is surprising.");
+    expect(avatarStore.getState().pendingCue).toMatchObject({ source: "response", action: "Jump", expression: "Surprised" });
+    provider.finish();
+    await execution;
+  });
+
   it("aborts generation and retains a non-empty partial response", async () => {
     const provider = new ControlledProvider();
     const { conversation, repository } = makeRepository();
     const conversationStore = createConversationStore(repository);
     conversationStore.setState({ conversations: [conversation], activeConversationId: conversation.id });
     const chatStore = createChatStore();
-    const controller = createChatController({ provider, repository, conversationStore, chatStore });
+    const avatarStore = createAvatarStore();
+    const controller = createChatController({ provider, repository, conversationStore, chatStore, avatarStore });
 
     const execution = controller.submit("Long task");
     await provider.started;
@@ -115,6 +135,8 @@ describe("chat controller", () => {
 
     expect(useAssistantStore.getState().state).toBe("idle");
     expect(chatStore.getState().messages.at(-1)).toMatchObject({ content: "Partial", status: "interrupted" });
+    expect(avatarStore.getState().activeCue).toMatchObject({ source: "response", action: "No" });
+    expect(avatarStore.getState().activeCue?.action).not.toBe("Death");
   });
 
   it("preserves partial output and retry metadata when the provider fails", async () => {
@@ -123,7 +145,8 @@ describe("chat controller", () => {
     const conversationStore = createConversationStore(repository);
     conversationStore.setState({ conversations: [conversation], activeConversationId: conversation.id });
     const chatStore = createChatStore();
-    const controller = createChatController({ provider, repository, conversationStore, chatStore });
+    const avatarStore = createAvatarStore();
+    const controller = createChatController({ provider, repository, conversationStore, chatStore, avatarStore });
 
     const execution = controller.submit("Risky task");
     await provider.started;
@@ -136,6 +159,12 @@ describe("chat controller", () => {
       retry: { kind: "submit" },
     });
     expect(chatStore.getState().messages.at(-1)).toMatchObject({ status: "error", content: "Useful partial" });
+    expect(avatarStore.getState().activeCue).toMatchObject({
+      source: "error",
+      action: "Death",
+      expression: "Sad",
+      persistent: true,
+    });
   });
 
   it("locks generation before regeneration storage work begins", async () => {

@@ -56,7 +56,9 @@ Dexie stores conversations, messages, and settings in the browser's `orbit` Inde
 
 ## RobotExpressive avatar
 
-Orbit ships the Three.js `RobotExpressive.glb` avatar locally and uses it by default. Chat lifecycle events drive its pose and emotes, while the Avatar lab provides manual states, emotes, and facial expressions. Compact previews start with the controls minimized so the character stays visible. If the model cannot load or render, the local scene boundary restores the procedural assistant instead of breaking chat.
+Orbit ships the Three.js `RobotExpressive.glb` avatar locally and uses it by default. Its behavior is automatic: a deterministic local intent engine reacts to user messages and streamed assistant responses without making another AI request. Greetings trigger **Wave**, celebration triggers **Dance**, surprise triggers **Jump** with a surprised expression, agreement and success use **Yes** or **ThumbsUp**, and anger or sadness select matching actions and expressions. Provider and storage failures trigger persistent **Death** with a sad expression until the next request; stopping a response uses **No** instead.
+
+The chat lifecycle supplies stable background poses—**Sitting** while thinking and **Standing** otherwise—while semantic reactions temporarily take precedence. Reduced-motion mode keeps expressions and stable poses but suppresses energetic automatic actions. There are no manual avatar controls. If the model cannot load or render, the local scene boundary restores the procedural assistant instead of breaking chat.
 
 The model is CC0 and is attributed in [`public/models/README.md`](public/models/README.md), which also documents its clip and morph-target contract.
 

@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ChatWorkspace } from "../../components/chat/ChatWorkspace";
-import { AvatarControls } from "../../components/assistant/AvatarControls";
 import { OrbitLogo } from "../../components/common/OrbitLogo";
 import { CommandMenu } from "../../components/settings/CommandMenu";
 import { SettingsDialog } from "../../components/settings/SettingsDialog";
@@ -120,7 +119,6 @@ function WorkspaceShell() {
             <WorkspaceCanvas compact={sceneMode !== "full"} active={sceneMode !== "compact" || mobilePreviewOpen} />
           </Suspense>
         ) : <div className="scene-fallback"><p className="eyebrow">Assistant space</p><p>{assistant?.name ?? "Orbit"} is online</p></div>}
-        {threeDEnabled && (sceneMode !== "compact" || mobilePreviewOpen) && <AvatarControls initiallyCollapsed={sceneMode === "compact"} />}
       </section>
       <section className="workspace-chat" id="chat-panel" tabIndex={-1} aria-label="Chat panel">
         <ChatWorkspace />

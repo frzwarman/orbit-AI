@@ -51,11 +51,11 @@ describe("assistant animation transitions", () => {
     expect(walking.clampWhenFinished).toBe(false);
   });
 
-  it("maps chat lifecycle to RobotExpressive bases and one-shot emotes", () => {
+  it("maps chat lifecycle to stable poses without generic emotes", () => {
     expect(getLifecycleAnimation("idle", false)).toEqual({ base: "Standing" });
     expect(getLifecycleAnimation("thinking", false)).toEqual({ base: "Sitting" });
-    expect(getLifecycleAnimation("streaming", false)).toEqual({ base: "Standing", emote: "Wave" });
-    expect(getLifecycleAnimation("done", false)).toEqual({ base: "Standing", emote: "ThumbsUp" });
+    expect(getLifecycleAnimation("streaming", false)).toEqual({ base: "Standing" });
+    expect(getLifecycleAnimation("done", false)).toEqual({ base: "Standing" });
     expect(getLifecycleAnimation("done", true)).toEqual({ base: "Standing" });
   });
 

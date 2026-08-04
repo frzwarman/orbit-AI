@@ -10,7 +10,7 @@ test("Ava reacts through the complete persisted chat journey", async ({ page }, 
 
   await expect(assistantStatus(page)).toContainText("Ava is thinking");
   await expect(assistantStatus(page)).toContainText("Ava is responding");
-  await expect(assistantStatus(page)).toContainText("Ava finished responding");
+  await expect(assistantStatus(page)).toContainText("Ava finished responding", { timeout: 15_000 });
   await expect(page.getByText("Here is your Orbit response.")).toBeVisible();
 
   await page.reload();

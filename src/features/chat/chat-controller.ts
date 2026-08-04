@@ -4,11 +4,13 @@ import { createAIProvider } from "../../lib/ai/provider";
 import { buildSystemPrompt } from "../../lib/ai/prompts";
 import type { AIProvider, ChatMessage } from "../../lib/ai/types";
 import { createAssistantLifecycle } from "../../lib/animation/assistant-lifecycle";
+import { classifyAvatarIntent } from "../../lib/animation/avatar-intent";
 import {
   conversationRepository,
   type ConversationRepository,
 } from "../../lib/storage/conversation-repository";
 import { useAssistantStore } from "../../stores/assistant-store";
+import { type AvatarState, useAvatarStore } from "../../stores/avatar-store";
 import { type ChatState, type RetryMetadata, useChatStore } from "../../stores/chat-store";
 import { type ConversationState, useConversationStore } from "../../stores/conversation-store";
 import { usePreferencesStore } from "../../stores/preferences-store";
@@ -21,6 +23,7 @@ type ControllerDependencies = {
   repository?: ConversationRepository;
   conversationStore?: StoreLike<ConversationState>;
   chatStore?: StoreLike<ChatState>;
+  avatarStore?: StoreLike<AvatarState>;
 };
 
 export type ChatController = {
@@ -44,6 +47,7 @@ export function createChatController({
   repository = conversationRepository,
   conversationStore = useConversationStore,
   chatStore = useChatStore,
+  avatarStore = useAvatarStore,
 }: ControllerDependencies = {}): ChatController {
   let activeRequest: AbortController | null = null;
   const lifecycle = createAssistantLifecycle(useAssistantStore.getState().setState);
@@ -51,6 +55,21 @@ export function createChatController({
   const syncMessages = (messages: StoredMessage[]) => {
     chatStore.getState().replaceMessages(messages);
     conversationStore.getState().replaceActiveMessages(messages);
+  };
+
+  const beginAvatarReaction = (content: string) => {
+    avatarStore.getState().resetCues();
+    const cue = classifyAvatarIntent(content, "user");
+    if (cue) avatarStore.getState().emitCue(cue);
+  };
+
+  const showAvatarError = () => {
+    avatarStore.getState().emitCue({
+      source: "error",
+      action: "Death",
+      expression: "Sad",
+      persistent: true,
+    });
   };
 
   const runResponse = async (
@@ -62,6 +81,7 @@ export function createChatController({
     let assistantMessage: StoredMessage | null = null;
     let durableTimer: ReturnType<typeof setTimeout> | null = null;
     let persistChain = Promise.resolve();
+    let responseCueEmitted = false;
     const retryBase: RetryMetadata = { kind: retryKind, userMessageId: userMessage.id };
 
     const clearDurableTimer = () => {
@@ -80,6 +100,14 @@ export function createChatController({
     const scheduleDurableContent = () => {
       if (durableTimer !== null) return;
       durableTimer = setTimeout(persistVisibleContent, 100);
+    };
+
+    const reactToResponse = (content: string) => {
+      if (responseCueEmitted) return;
+      const cue = classifyAvatarIntent(content, "response");
+      if (!cue) return;
+      responseCueEmitted = true;
+      avatarStore.getState().emitCue(cue);
     };
 
     const context: ChatMessage[] = [
@@ -109,6 +137,7 @@ export function createChatController({
             syncMessages([...chatStore.getState().messages, assistantMessage]);
             persistChain = persistChain.then(() => repository.appendMessage(assistantMessage as StoredMessage));
             lifecycle.stream();
+            reactToResponse(assistantMessage.content);
             return;
           }
           const nextAssistant: StoredMessage = { ...assistantMessage, content: assistantMessage.content + token };
@@ -117,6 +146,7 @@ export function createChatController({
             .getState()
             .messages.map((message) => (message.id === nextAssistant.id ? nextAssistant : message));
           syncMessages(visible);
+          reactToResponse(nextAssistant.content);
           scheduleDurableContent();
         },
       });
@@ -130,6 +160,9 @@ export function createChatController({
         syncMessages(chatStore.getState().messages.map((message) => (message.id === complete.id ? complete : message)));
       }
       chatStore.getState().setFailure(null);
+      if (!responseCueEmitted) {
+        avatarStore.getState().emitCue({ source: "response", action: "ThumbsUp", expression: "Neutral" });
+      }
       lifecycle.complete();
       return true;
     } catch (error) {
@@ -148,8 +181,11 @@ export function createChatController({
       }
       if (aborted) {
         chatStore.getState().setFailure(null);
+        avatarStore.getState().resetCues();
+        avatarStore.getState().emitCue({ source: "response", action: "No", expression: "Neutral" });
       } else {
         chatStore.getState().setFailure(errorText(error), retryBase);
+        showAvatarError();
       }
       lifecycle.stop();
       return false;
@@ -163,6 +199,7 @@ export function createChatController({
     if (chatStore.getState().isGenerating) return false;
     chatStore.getState().setGenerating(true);
     chatStore.getState().setFailure(null);
+    beginAvatarReaction(userMessage.content);
     lifecycle.begin();
     return runResponse(userMessage, kind);
   };
@@ -172,6 +209,7 @@ export function createChatController({
     if (!content || chatStore.getState().isGenerating) return false;
     chatStore.getState().setGenerating(true);
     chatStore.getState().setFailure(null);
+    beginAvatarReaction(content);
     lifecycle.begin();
     try {
       let conversationId = conversationStore.getState().activeConversationId;
@@ -193,6 +231,7 @@ export function createChatController({
       return runResponse(userMessage, "submit");
     } catch (error) {
       chatStore.getState().setFailure(errorText(error));
+      showAvatarError();
       chatStore.getState().setGenerating(false);
       lifecycle.stop();
       return false;
@@ -208,6 +247,7 @@ export function createChatController({
     if (!userMessage) return false;
     chatStore.getState().setGenerating(true);
     chatStore.getState().setFailure(null);
+    beginAvatarReaction(userMessage.content);
     lifecycle.begin();
     try {
       await repository.truncateAfter(userMessage.conversationId, userMessage.createdAt);
@@ -215,6 +255,7 @@ export function createChatController({
       return runResponse(userMessage, "regenerate");
     } catch (error) {
       chatStore.getState().setFailure(errorText(error));
+      showAvatarError();
       chatStore.getState().setGenerating(false);
       lifecycle.stop();
       return false;
@@ -232,6 +273,7 @@ export function createChatController({
     const userMessage: StoredMessage = { ...existingUser, content };
     chatStore.getState().setGenerating(true);
     chatStore.getState().setFailure(null);
+    beginAvatarReaction(content);
     lifecycle.begin();
     try {
       await repository.updateMessage(userMessage.id, { content });
@@ -240,6 +282,7 @@ export function createChatController({
       return runResponse(userMessage, "edit-resend");
     } catch (error) {
       chatStore.getState().setFailure(errorText(error));
+      showAvatarError();
       chatStore.getState().setGenerating(false);
       lifecycle.stop();
       return false;
